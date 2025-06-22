@@ -11,29 +11,31 @@
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
-            background-color: #f0f2f5; /* 淺灰色背景 */
-            touch-action: manipulation;
-        }
-        .stat-box {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
+            background-color: #f0f2f5; /* 頁面背景色 */
+            touch-action: manipulation; /* 防止行動裝置上的雙擊縮放 */
         }
         .prevent-select {
-            -webkit-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+            user-select: none; /* 標準語法 */
         }
-        .click-area {
-            background-color: #e9ecef;
+        /* 自訂彈出提示樣式 */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s, top 0.5s;
         }
-        /* 讓手機上的格線更好看 */
-        @media (max-width: 767px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-            .stat-box:nth-child(5) {
-                grid-column: span 2 / span 2;
-            }
+        .toast-notification.show {
+            top: 40px;
+            opacity: 1;
         }
     </style>
 </head>
@@ -47,31 +49,31 @@
         </div>
 
         <!-- 數據顯示區 -->
-        <div class="stats-grid grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 text-center">
-            <div class="stat-box p-4 rounded-lg">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 text-center">
+            <div class="bg-gray-100 p-4 rounded-lg">
                 <p class="text-sm text-gray-600">剩餘時間</p>
-                <p id="timer" class="text-2xl md:text-3xl font-bold text-gray-800">0.00s</p>
+                <p id="timer" class="text-2xl md:text-3xl font-bold text-gray-800">10.00s</p>
             </div>
-            <div class="stat-box p-4 rounded-lg">
+            <div class="bg-gray-100 p-4 rounded-lg">
                 <p class="text-sm text-gray-600">點擊次數</p>
                 <p id="clicks" class="text-2xl md:text-3xl font-bold text-gray-800">0</p>
             </div>
-            <div class="stat-box p-4 rounded-lg bg-blue-100 border-blue-200">
+            <div class="bg-blue-100/60 p-4 rounded-lg">
                 <p class="text-sm text-blue-800">本次 CPS</p>
                 <p id="currentCps" class="text-2xl md:text-3xl font-bold text-blue-800">0.00</p>
             </div>
-            <div class="stat-box p-4 rounded-lg bg-green-100 border-green-200">
+            <div class="bg-green-100/60 p-4 rounded-lg">
                 <p class="text-sm text-green-800">平均 CPS</p>
                 <p id="avgCps" class="text-2xl md:text-3xl font-bold text-green-800">0.00</p>
             </div>
-            <div class="stat-box p-4 rounded-lg bg-yellow-100 border-yellow-200">
+            <div class="bg-yellow-100/60 p-4 rounded-lg">
                 <p class="text-sm text-yellow-800">平均 CPM</p>
-                <p id="avgCpm" class="text-2xl md:text-3xl font-bold text-yellow-800">0.00</p>
+                <p id="avgCpm" class="text-2xl md:text-3xl font-bold text-yellow-800">0</p>
             </div>
         </div>
 
         <!-- 點擊區域 -->
-        <div id="clickArea" class="prevent-select click-area w-full h-60 md:h-72 rounded-lg flex items-center justify-center text-2xl font-bold text-gray-600 cursor-pointer transition-all duration-200">
+        <div id="clickArea" class="prevent-select bg-gray-200 w-full h-60 md:h-72 rounded-lg flex items-center justify-center text-2xl font-bold text-gray-600 cursor-pointer transition-colors duration-200">
             <span id="clickAreaText">點擊此處開始</span>
         </div>
 
@@ -79,7 +81,7 @@
         <div class="flex flex-col md:flex-row items-center justify-center gap-4 mt-6">
             <div class="flex items-center gap-2">
                 <label for="durationSelect" class="text-gray-700 font-medium">測試時間：</label>
-                <select id="durationSelect" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2">
+                <select id="durationSelect" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5">
                     <option value="5">5 秒</option>
                     <option value="10" selected>10 秒</option>
                     <option value="30">30 秒</option>
@@ -96,225 +98,258 @@
     </div>
 
     <script type="module">
+        // Firebase 模組，用於資料庫操作
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase 設定 ---
-        const firebaseConfig = __firebase_config ? JSON.parse(__firebase_config) : null;
+        // --- Firebase 設定與認證 ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         let app, auth, db, userId;
         let isAuthReady = false;
 
         if (firebaseConfig) {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    isAuthReady = true;
-                    await loadHistory();
-                } else {
-                    signInAnonymously(auth).then(cred => {
-                        userId = cred.user.uid;
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
                         isAuthReady = true;
-                        loadHistory();
-                    });
-                }
-            });
+                        await loadHistory();
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                });
+            } catch (e) {
+                console.error("Firebase 初始化失敗:", e);
+                isAuthReady = true; // 即使 Firebase 失敗，也允許本地儲存
+                await loadHistory();
+            }
         } else {
-            console.warn("Firebase config is not available. History will be stored locally.");
+            console.warn("Firebase 設定未提供。歷史紀錄將儲存於本機。");
             isAuthReady = true;
-            loadHistory(); // 從 localStorage 載入
+            await loadHistory(); // 從 localStorage 載入
         }
 
+        // --- DOM 元素選擇 ---
+        const dom = {
+            timer: document.getElementById('timer'),
+            clicks: document.getElementById('clicks'),
+            currentCps: document.getElementById('currentCps'),
+            avgCps: document.getElementById('avgCps'),
+            avgCpm: document.getElementById('avgCpm'),
+            clickArea: document.getElementById('clickArea'),
+            clickAreaText: document.getElementById('clickAreaText'),
+            durationSelect: document.getElementById('durationSelect'),
+            resetButton: document.getElementById('resetButton'),
+            clearHistoryButton: document.getElementById('clearHistoryButton')
+        };
 
-        // --- DOM 元素 ---
-        const timerEl = document.getElementById('timer');
-        const clicksEl = document.getElementById('clicks');
-        const currentCpsEl = document.getElementById('currentCps');
-        const avgCpsEl = document.getElementById('avgCps');
-        const avgCpmEl = document.getElementById('avgCpm');
-        const clickArea = document.getElementById('clickArea');
-        const clickAreaText = document.getElementById('clickAreaText');
-        const durationSelect = document.getElementById('durationSelect');
-        const resetButton = document.getElementById('resetButton');
-        const clearHistoryButton = document.getElementById('clearHistoryButton');
+        // --- 應用程式狀態 ---
+        let state = {
+            clicks: 0,
+            duration: parseInt(dom.durationSelect.value, 10),
+            timerInterval: null,
+            gameStarted: false,
+            history: [] // 儲存格式: { cps, cpm }
+        };
 
-        // --- 遊戲狀態變數 ---
-        let clicks = 0;
-        let duration = parseInt(durationSelect.value, 10);
-        let timeLeft = duration;
-        let timerInterval = null;
-        let gameStarted = false;
-        let history = []; // { cps, cpm }
+        // --- 核心邏輯 ---
 
-        // --- 核心函式 ---
-
-        // 初始化或重置遊戲
-        function initialize() {
-            gameStarted = false;
-            clicks = 0;
-            duration = parseInt(durationSelect.value, 10);
-            timeLeft = duration;
-
-            clearInterval(timerInterval);
-            timerInterval = null;
+        /**
+         * 初始化或重置遊戲
+         */
+        function resetGame() {
+            state.gameStarted = false;
+            state.clicks = 0;
+            state.duration = parseInt(dom.durationSelect.value, 10);
+            
+            clearInterval(state.timerInterval);
+            state.timerInterval = null;
 
             updateUIForReset();
-            clickArea.addEventListener('click', handleClick);
+            dom.clickArea.addEventListener('click', handleGameClick);
         }
 
-        // 更新 UI 為重置狀態
+        /**
+         * 更新 UI 回到初始狀態
+         */
         function updateUIForReset() {
-            timerEl.textContent = `${duration.toFixed(2)}s`;
-            clicksEl.textContent = '0';
-            currentCpsEl.textContent = '0.00';
-            clickAreaText.textContent = '點擊此處開始';
-            clickArea.classList.remove('bg-red-200');
-            clickArea.classList.add('click-area');
-            durationSelect.disabled = false;
+            dom.timer.textContent = `${state.duration.toFixed(2)}s`;
+            dom.clicks.textContent = '0';
+            dom.currentCps.textContent = '0.00';
+            dom.clickAreaText.textContent = '點擊此處開始';
+            dom.clickArea.classList.remove('bg-red-200');
+            dom.clickArea.classList.add('bg-gray-200');
+            dom.durationSelect.disabled = false;
         }
 
-        // 處理點擊事件
-        function handleClick() {
-            if (!gameStarted) {
-                gameStarted = true;
-                durationSelect.disabled = true; // 遊戲開始後禁止更改時間
+        /**
+         * 處理遊戲中的點擊
+         */
+        function handleGameClick() {
+            if (!state.gameStarted) {
+                state.gameStarted = true;
+                dom.durationSelect.disabled = true;
                 startTimer();
             }
-            clicks++;
-            clicksEl.textContent = clicks;
+            state.clicks++;
+            dom.clicks.textContent = state.clicks;
         }
 
-        // 開始計時器
+        /**
+         * 開始計時器，精確計時
+         */
         function startTimer() {
             const startTime = Date.now();
-            clickAreaText.textContent = '點擊！';
+            dom.clickAreaText.textContent = '點擊！';
 
-            timerInterval = setInterval(() => {
+            state.timerInterval = setInterval(() => {
                 const elapsedTime = (Date.now() - startTime) / 1000;
-                timeLeft = duration - elapsedTime;
+                const timeLeft = state.duration - elapsedTime;
 
                 if (timeLeft > 0) {
-                    timerEl.textContent = `${timeLeft.toFixed(2)}s`;
+                    dom.timer.textContent = timeLeft.toFixed(2) + 's';
                 } else {
                     endGame();
                 }
-            }, 10); // 使用更精確的間隔
+            }, 10);
         }
 
-        // 結束遊戲
+        /**
+         * 遊戲結束
+         */
         async function endGame() {
-            clearInterval(timerInterval);
-            timerEl.textContent = '0.00s';
-            gameStarted = false;
-            clickArea.removeEventListener('click', handleClick);
+            clearInterval(state.timerInterval);
+            dom.timer.textContent = '0.00s';
+            state.gameStarted = false;
+            dom.clickArea.removeEventListener('click', handleGameClick);
+            
+            const finalCps = state.clicks / state.duration;
+            const finalCpm = finalCps * 60;
 
-            const finalCps = (clicks / duration).toFixed(2);
-            const finalCpm = Math.round((clicks / duration) * 60);
+            dom.currentCps.textContent = finalCps.toFixed(2);
 
-            currentCpsEl.textContent = finalCps;
-
-            // 新增到歷史紀錄
-            if(clicks > 0){
-                history.push({ cps: parseFloat(finalCps), cpm: finalCpm });
+            if (state.clicks > 0) {
+                state.history.push({ cps: finalCps, cpm: finalCpm });
                 await saveHistory();
             }
             
             updateAverageStats();
 
-            clickAreaText.textContent = '時間到！';
-            clickArea.classList.add('bg-red-200');
-            clickArea.classList.remove('click-area');
+            dom.clickAreaText.textContent = '時間到！';
+            dom.clickArea.classList.add('bg-red-200');
+            dom.clickArea.classList.remove('bg-gray-200');
         }
 
-        // 更新平均數據顯示
+        /**
+         * 更新平均數據的顯示
+         */
         function updateAverageStats() {
-            if (history.length === 0) {
-                avgCpsEl.textContent = '0.00';
-                avgCpmEl.textContent = '0';
+            if (state.history.length === 0) {
+                dom.avgCps.textContent = '0.00';
+                dom.avgCpm.textContent = '0';
                 return;
             }
-
-            const totalCps = history.reduce((sum, record) => sum + record.cps, 0);
-            const totalCpm = history.reduce((sum, record) => sum + record.cpm, 0);
-
-            avgCpsEl.textContent = (totalCps / history.length).toFixed(2);
-            avgCpmEl.textContent = Math.round(totalCpm / history.length);
+            const totalCps = state.history.reduce((sum, record) => sum + record.cps, 0);
+            const totalCpm = state.history.reduce((sum, record) => sum + record.cpm, 0);
+            dom.avgCps.textContent = (totalCps / state.history.length).toFixed(2);
+            dom.avgCpm.textContent = Math.round(totalCpm / state.history.length);
         }
 
-        // --- 資料儲存 ---
-        
-        // 取得 Firestore 文件參考
+        // --- 資料持久化 ---
+
+        /**
+         * 取得 Firestore 文件路徑
+         */
         function getHistoryDocRef() {
+            if (!db || !userId) return null;
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cps-app';
-            // Use a fallback for userId if it's not ready
-            const currentUserId = userId || 'anonymous_user';
-            return doc(db, 'artifacts', appId, 'users', currentUserId, 'cpsHistory', 'data');
+            return doc(db, 'artifacts', appId, 'users', userId, 'cpsHistory', 'data');
         }
 
-        // 載入歷史紀錄
+        /**
+         * 載入歷史紀錄 (從 Firebase 或 LocalStorage)
+         */
         async function loadHistory() {
             if (!isAuthReady) return;
             try {
-                 if (firebaseConfig && db && userId) {
-                    const docRef = getHistoryDocRef();
+                const docRef = getHistoryDocRef();
+                if (docRef) {
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists() && docSnap.data().history) {
-                        history = docSnap.data().history;
-                    } else {
-                        history = [];
+                        state.history = docSnap.data().history;
                     }
-                } else { // Fallback to localStorage
+                } else {
                     const localHistory = localStorage.getItem('cpsHistory');
-                    history = localHistory ? JSON.parse(localHistory) : [];
+                    state.history = localHistory ? JSON.parse(localHistory) : [];
                 }
             } catch (error) {
-                console.error("Error loading history:", error);
-                history = [];
+                console.error("讀取歷史紀錄失敗:", error);
+                state.history = [];
             }
             updateAverageStats();
         }
 
-        // 儲存歷史紀錄
+        /**
+         * 儲存歷史紀錄
+         */
         async function saveHistory() {
-             if (!isAuthReady) return;
-             try {
-                if (firebaseConfig && db && userId) {
-                    const docRef = getHistoryDocRef();
-                    await setDoc(docRef, { history: history });
-                } else { // Fallback to localStorage
-                    localStorage.setItem('cpsHistory', JSON.stringify(history));
+            if (!isAuthReady) return;
+            try {
+                const docRef = getHistoryDocRef();
+                if (docRef) {
+                    await setDoc(docRef, { history: state.history });
+                } else {
+                    localStorage.setItem('cpsHistory', JSON.stringify(state.history));
                 }
-             } catch(error){
-                console.error("Error saving history:", error);
-             }
+            } catch (error) {
+                console.error("儲存歷史紀錄失敗:", error);
+            }
         }
 
-        // 清除歷史紀錄
+        /**
+         * 清除所有歷史紀錄
+         */
         async function clearHistory() {
-            history = [];
+            state.history = [];
             await saveHistory();
             updateAverageStats();
-            // Using a custom modal/alert might be better than the native alert.
-            // For now, let's keep it simple.
-            const clearConfirmation = document.createElement('div');
-            clearConfirmation.textContent = '歷史紀錄已清除！';
-            clearConfirmation.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #28a745; color: white; padding: 10px 20px; border-radius: 5px; z-index: 1000;';
-            document.body.appendChild(clearConfirmation);
-            setTimeout(() => {
-                document.body.removeChild(clearConfirmation);
-            }, 2000);
+            showToast("歷史紀錄已清除！");
         }
 
+        /**
+         * 顯示一個短暫的提示訊息
+         * @param {string} message - 要顯示的訊息
+         */
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.className = 'toast-notification';
+            document.body.appendChild(toast);
 
-        // --- 事件監聽器 ---
-        durationSelect.addEventListener('change', initialize);
-        resetButton.addEventListener('click', initialize);
-        clearHistoryButton.addEventListener('click', clearHistory);
-        window.addEventListener('load', initialize);
+            // 觸發顯示動畫
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            // 2.5秒後移除
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 500); // 等待淡出動畫結束
+            }, 2500);
+        }
+
+        // --- 事件監聽器設定 ---
+        dom.durationSelect.addEventListener('change', resetGame);
+        dom.resetButton.addEventListener('click', resetGame);
+        dom.clearHistoryButton.addEventListener('click', clearHistory);
+        window.addEventListener('load', resetGame);
 
     </script>
 </body>
