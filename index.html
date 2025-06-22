@@ -113,11 +113,15 @@
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
+                    isAuthReady = true;
+                    await loadHistory();
                 } else {
-                    await signInAnonymously(auth);
+                    signInAnonymously(auth).then(cred => {
+                        userId = cred.user.uid;
+                        isAuthReady = true;
+                        loadHistory();
+                    });
                 }
-                isAuthReady = true;
-                await loadHistory();
             });
         } else {
             console.warn("Firebase config is not available. History will be stored locally.");
@@ -246,7 +250,9 @@
         // 取得 Firestore 文件參考
         function getHistoryDocRef() {
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cps-app';
-            return doc(db, 'artifacts', appId, 'users', userId, 'cpsHistory', 'data');
+            // Use a fallback for userId if it's not ready
+            const currentUserId = userId || 'anonymous_user';
+            return doc(db, 'artifacts', appId, 'users', currentUserId, 'cpsHistory', 'data');
         }
 
         // 載入歷史紀錄
@@ -292,7 +298,15 @@
             history = [];
             await saveHistory();
             updateAverageStats();
-            alert("歷史紀錄已清除！");
+            // Using a custom modal/alert might be better than the native alert.
+            // For now, let's keep it simple.
+            const clearConfirmation = document.createElement('div');
+            clearConfirmation.textContent = '歷史紀錄已清除！';
+            clearConfirmation.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #28a745; color: white; padding: 10px 20px; border-radius: 5px; z-index: 1000;';
+            document.body.appendChild(clearConfirmation);
+            setTimeout(() => {
+                document.body.removeChild(clearConfirmation);
+            }, 2000);
         }
 
 
