@@ -3,259 +3,305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CPS 手速測試 (含進階統計)</title>
-    <!-- 引入 Tailwind CSS 以進行快速且響應式的樣式設計 -->
+    <title>進階 CPS 手速測試器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- 引入 Google 字體 'Inter' 以獲得更美觀的文字顯示 -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* 自定義樣式，使用 Noto Sans TC 作為主要字體 */
         body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0f2f5; /* 淺灰色背景 */
+            touch-action: manipulation;
         }
-        /* 為點擊按鈕添加點擊時的縮放效果 */
-        .click-area:active {
-            transform: scale(0.98);
-            transition: transform 0.05s ease-in-out;
+        .stat-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+        .prevent-select {
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        .click-area {
+            background-color: #e9ecef;
+        }
+        /* 讓手機上的格線更好看 */
+        @media (max-width: 767px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .stat-box:nth-child(5) {
+                grid-column: span 2 / span 2;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex items-center justify-center min-h-screen p-4">
+<body class="flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-10 text-center">
-        
+    <div class="w-full max-w-4xl bg-white p-6 md:p-8 rounded-2xl shadow-lg">
         <!-- 標題 -->
-        <h1 class="text-4xl md:text-5xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">CPS 手速測試</h1>
-        <p class="text-gray-600 dark:text-gray-400 mb-8">測試您在限定時間內的點擊速度！</p>
+        <div class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-600">CPS 手速測試</h1>
+            <p class="text-gray-500 mt-1">測試您在限定時間內的點擊速度！</p>
+        </div>
 
-        <!-- 數據顯示區域 -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-            <!-- 進行中數據 -->
-            <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg lg:col-span-1">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">剩餘時間</p>
-                <p id="timerDisplay" class="text-3xl font-bold">5.00s</p>
+        <!-- 數據顯示區 -->
+        <div class="stats-grid grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 text-center">
+            <div class="stat-box p-4 rounded-lg">
+                <p class="text-sm text-gray-600">剩餘時間</p>
+                <p id="timer" class="text-2xl md:text-3xl font-bold text-gray-800">0.00s</p>
             </div>
-            <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg lg:col-span-1">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">點擊次數</p>
-                <p id="clicksDisplay" class="text-3xl font-bold">0</p>
+            <div class="stat-box p-4 rounded-lg">
+                <p class="text-sm text-gray-600">點擊次數</p>
+                <p id="clicks" class="text-2xl md:text-3xl font-bold text-gray-800">0</p>
             </div>
-            <!-- 結果數據 -->
-            <div class="bg-indigo-100 dark:bg-indigo-900/40 p-4 rounded-lg border border-indigo-200 dark:border-indigo-500/30">
-                <p class="text-sm font-medium text-indigo-500 dark:text-indigo-400">本次 CPS</p>
-                <p id="cpsDisplay" class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">0.00</p>
+            <div class="stat-box p-4 rounded-lg bg-blue-100 border-blue-200">
+                <p class="text-sm text-blue-800">本次 CPS</p>
+                <p id="currentCps" class="text-2xl md:text-3xl font-bold text-blue-800">0.00</p>
             </div>
-            <div class="bg-teal-100 dark:bg-teal-900/40 p-4 rounded-lg border border-teal-200 dark:border-teal-500/30">
-                <p class="text-sm font-medium text-teal-500 dark:text-teal-400">平均 CPS</p>
-                <p id="avgCpsDisplay" class="text-3xl font-bold text-teal-600 dark:text-teal-400">0.00</p>
+            <div class="stat-box p-4 rounded-lg bg-green-100 border-green-200">
+                <p class="text-sm text-green-800">平均 CPS</p>
+                <p id="avgCps" class="text-2xl md:text-3xl font-bold text-green-800">0.00</p>
             </div>
-            <div class="bg-yellow-100 dark:bg-yellow-900/40 p-4 rounded-lg border border-yellow-200 dark:border-yellow-500/30">
-                <p class="text-sm font-medium text-yellow-600 dark:text-yellow-400">平均 CPM</p>
-                <p id="avgCpmDisplay" class="text-3xl font-bold text-yellow-700 dark:text-yellow-500">0.00</p>
+            <div class="stat-box p-4 rounded-lg bg-yellow-100 border-yellow-200">
+                <p class="text-sm text-yellow-800">平均 CPM</p>
+                <p id="avgCpm" class="text-2xl md:text-3xl font-bold text-yellow-800">0.00</p>
             </div>
         </div>
 
         <!-- 點擊區域 -->
-        <div id="clickArea" class="click-area w-full h-48 md:h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center text-2xl font-semibold cursor-pointer select-none transition-colors duration-200">
+        <div id="clickArea" class="prevent-select click-area w-full h-60 md:h-72 rounded-lg flex items-center justify-center text-2xl font-bold text-gray-600 cursor-pointer transition-all duration-200">
             <span id="clickAreaText">點擊此處開始</span>
         </div>
 
         <!-- 控制項 -->
-        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div class="flex flex-col md:flex-row items-center justify-center gap-4 mt-6">
             <div class="flex items-center gap-2">
-                <label for="durationSelect" class="font-medium">測試時間:</label>
-                <select id="durationSelect" class="bg-gray-200 dark:bg-gray-700 border-none rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500">
-                    <option value="1">1 秒</option>
-                    <option value="3">3 秒</option>
-                    <option value="5" selected>5 秒</option>
-                    <option value="10">10 秒</option>
-                    <option value="15">15 秒</option>
+                <label for="durationSelect" class="text-gray-700 font-medium">測試時間：</label>
+                <select id="durationSelect" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2">
+                    <option value="5">5 秒</option>
+                    <option value="10" selected>10 秒</option>
                     <option value="30">30 秒</option>
+                    <option value="60">60 秒</option>
                 </select>
             </div>
-            <button id="resetButton" class="w-full sm:w-auto bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 transition-all duration-200 ease-in-out">
+            <button id="resetButton" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
                 重置
             </button>
-            <button id="clearHistoryButton" class="w-full sm:w-auto bg-red-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900 transition-all duration-200 ease-in-out">
+            <button id="clearHistoryButton" class="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
                 清除紀錄
             </button>
         </div>
-
     </div>
 
-    <script>
-        // DOM 元素獲取
-        const timerDisplay = document.getElementById('timerDisplay');
-        const clicksDisplay = document.getElementById('clicksDisplay');
-        const cpsDisplay = document.getElementById('cpsDisplay');
-        const avgCpsDisplay = document.getElementById('avgCpsDisplay');
-        const avgCpmDisplay = document.getElementById('avgCpmDisplay'); // 新增：平均 CPM 顯示
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase 設定 ---
+        const firebaseConfig = __firebase_config ? JSON.parse(__firebase_config) : null;
+        let app, auth, db, userId;
+        let isAuthReady = false;
+
+        if (firebaseConfig) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                } else {
+                    await signInAnonymously(auth);
+                }
+                isAuthReady = true;
+                await loadHistory();
+            });
+        } else {
+            console.warn("Firebase config is not available. History will be stored locally.");
+            isAuthReady = true;
+            loadHistory(); // 從 localStorage 載入
+        }
+
+
+        // --- DOM 元素 ---
+        const timerEl = document.getElementById('timer');
+        const clicksEl = document.getElementById('clicks');
+        const currentCpsEl = document.getElementById('currentCps');
+        const avgCpsEl = document.getElementById('avgCps');
+        const avgCpmEl = document.getElementById('avgCpm');
         const clickArea = document.getElementById('clickArea');
         const clickAreaText = document.getElementById('clickAreaText');
+        const durationSelect = document.getElementById('durationSelect');
         const resetButton = document.getElementById('resetButton');
         const clearHistoryButton = document.getElementById('clearHistoryButton');
-        const durationSelect = document.getElementById('durationSelect');
 
-        // 遊戲狀態變數
+        // --- 遊戲狀態變數 ---
         let clicks = 0;
-        let testDuration = parseInt(durationSelect.value, 10);
-        let timeLeft = testDuration;
-        let timer = null;
-        let isTesting = false;
-        let history = []; // 用於儲存歷史 CPS 分數的陣列
+        let duration = parseInt(durationSelect.value, 10);
+        let timeLeft = duration;
+        let timerInterval = null;
+        let gameStarted = false;
+        let history = []; // { cps, cpm }
 
-        /**
-         * 從 localStorage 載入歷史紀錄
-         */
-        function loadHistory() {
-            const storedHistory = localStorage.getItem('cpsHistory');
-            if (storedHistory) {
-                history = JSON.parse(storedHistory);
+        // --- 核心函式 ---
+
+        // 初始化或重置遊戲
+        function initialize() {
+            gameStarted = false;
+            clicks = 0;
+            duration = parseInt(durationSelect.value, 10);
+            timeLeft = duration;
+
+            clearInterval(timerInterval);
+            timerInterval = null;
+
+            updateUIForReset();
+            clickArea.addEventListener('click', handleClick);
+        }
+
+        // 更新 UI 為重置狀態
+        function updateUIForReset() {
+            timerEl.textContent = `${duration.toFixed(2)}s`;
+            clicksEl.textContent = '0';
+            currentCpsEl.textContent = '0.00';
+            clickAreaText.textContent = '點擊此處開始';
+            clickArea.classList.remove('bg-red-200');
+            clickArea.classList.add('click-area');
+            durationSelect.disabled = false;
+        }
+
+        // 處理點擊事件
+        function handleClick() {
+            if (!gameStarted) {
+                gameStarted = true;
+                durationSelect.disabled = true; // 遊戲開始後禁止更改時間
+                startTimer();
             }
-            updateAverageDisplays();
+            clicks++;
+            clicksEl.textContent = clicks;
         }
 
-        /**
-         * 將歷史紀錄儲存到 localStorage
-         */
-        function saveHistory() {
-            localStorage.setItem('cpsHistory', JSON.stringify(history));
+        // 開始計時器
+        function startTimer() {
+            const startTime = Date.now();
+            clickAreaText.textContent = '點擊！';
+
+            timerInterval = setInterval(() => {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                timeLeft = duration - elapsedTime;
+
+                if (timeLeft > 0) {
+                    timerEl.textContent = `${timeLeft.toFixed(2)}s`;
+                } else {
+                    endGame();
+                }
+            }, 10); // 使用更精確的間隔
         }
-        
-        /**
-         * 計算並更新所有平均值顯示
-         */
-        function updateAverageDisplays() {
+
+        // 結束遊戲
+        async function endGame() {
+            clearInterval(timerInterval);
+            timerEl.textContent = '0.00s';
+            gameStarted = false;
+            clickArea.removeEventListener('click', handleClick);
+
+            const finalCps = (clicks / duration).toFixed(2);
+            const finalCpm = Math.round((clicks / duration) * 60);
+
+            currentCpsEl.textContent = finalCps;
+
+            // 新增到歷史紀錄
+            if(clicks > 0){
+                history.push({ cps: parseFloat(finalCps), cpm: finalCpm });
+                await saveHistory();
+            }
+            
+            updateAverageStats();
+
+            clickAreaText.textContent = '時間到！';
+            clickArea.classList.add('bg-red-200');
+            clickArea.classList.remove('click-area');
+        }
+
+        // 更新平均數據顯示
+        function updateAverageStats() {
             if (history.length === 0) {
-                avgCpsDisplay.textContent = '0.00';
-                avgCpmDisplay.textContent = '0.00';
+                avgCpsEl.textContent = '0.00';
+                avgCpmEl.textContent = '0';
                 return;
             }
-            const sum = history.reduce((total, score) => total + score, 0);
-            const averageCps = sum / history.length;
-            const averageCpm = averageCps * 60; // 換算成每分鐘點擊數
 
-            avgCpsDisplay.textContent = averageCps.toFixed(2);
-            avgCpmDisplay.textContent = averageCpm.toFixed(2);
+            const totalCps = history.reduce((sum, record) => sum + record.cps, 0);
+            const totalCpm = history.reduce((sum, record) => sum + record.cpm, 0);
+
+            avgCpsEl.textContent = (totalCps / history.length).toFixed(2);
+            avgCpmEl.textContent = Math.round(totalCpm / history.length);
         }
 
-        /**
-         * 初始化或重置遊戲狀態
-         */
-        function resetGame() {
-            clearInterval(timer);
-            isTesting = false;
-            clicks = 0;
-            testDuration = parseInt(durationSelect.value, 10);
-            timeLeft = testDuration;
-            
-            timerDisplay.textContent = `${testDuration.toFixed(2)}s`;
-            clicksDisplay.textContent = '0';
-            cpsDisplay.textContent = '0.00';
-            clickAreaText.textContent = '點擊此處開始';
-            
-            clickArea.classList.remove('bg-green-400', 'dark:bg-green-600', 'bg-red-400', 'dark:bg-red-600');
-            clickArea.classList.add('bg-gray-200', 'dark:bg-gray-700');
-            durationSelect.disabled = false;
-            resetButton.textContent = '重置';
-        }
-
-        /**
-         * 開始遊戲倒數計時
-         */
-        function startGame() {
-            if (isTesting) return;
-
-            resetGame();
-            isTesting = true;
-            durationSelect.disabled = true;
-            clickAreaText.textContent = '瘋狂點擊！';
-            clickArea.classList.remove('bg-gray-200', 'dark:bg-gray-700');
-            clickArea.classList.add('bg-green-400', 'dark:bg-green-600');
-
-            const startTime = Date.now();
-
-            timer = setInterval(() => {
-                const elapsedTime = (Date.now() - startTime) / 1000;
-                timeLeft = testDuration - elapsedTime;
-
-                if (timeLeft <= 0) {
-                    endGame();
-                } else {
-                    timerDisplay.textContent = `${timeLeft.toFixed(2)}s`;
-                }
-            }, 10);
-        }
-
-        /**
-         * 結束遊戲並計算結果
-         */
-        function endGame() {
-            clearInterval(timer);
-            isTesting = false;
-            timeLeft = 0;
-
-            const cps = (clicks / testDuration);
-            cpsDisplay.textContent = cps.toFixed(2);
-            
-            // 儲存成績並更新平均值
-            history.push(cps);
-            saveHistory();
-            updateAverageDisplays();
-
-            timerDisplay.textContent = '0.00s';
-            clickAreaText.textContent = `測試結束！你的 CPS 是 ${cps.toFixed(2)}`;
-
-            clickArea.classList.remove('bg-green-400', 'dark:bg-green-600');
-            clickArea.classList.add('bg-red-400', 'dark:bg-red-600');
-            durationSelect.disabled = false;
-            resetButton.textContent = '重新開始';
-        }
-
-        /**
-         * 處理點擊區域的點擊事件
-         */
-        function handleAreaClick() {
-            if (!isTesting) {
-                startGame();
-            }
-            if (isTesting) {
-                clicks++;
-                clicksDisplay.textContent = clicks;
-            }
-        }
+        // --- 資料儲存 ---
         
-        // 事件監聽器綁定
-        clickArea.addEventListener('click', handleAreaClick);
-        resetButton.addEventListener('click', () => {
-            if (!isTesting && timeLeft <= 0) {
-                startGame();
-            } else {
-                resetGame();
-            }
-        });
-        durationSelect.addEventListener('change', () => {
-            if (!isTesting) {
-                testDuration = parseInt(durationSelect.value, 10);
-                resetGame();
-            }
-        });
+        // 取得 Firestore 文件參考
+        function getHistoryDocRef() {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cps-app';
+            return doc(db, 'artifacts', appId, 'users', userId, 'cpsHistory', 'data');
+        }
 
-        clearHistoryButton.addEventListener('click', () => {
-            // 增加一個確認步驟，避免誤刪
-            if (confirm('您確定要清除所有歷史紀錄嗎？此操作無法復原。')) {
+        // 載入歷史紀錄
+        async function loadHistory() {
+            if (!isAuthReady) return;
+            try {
+                 if (firebaseConfig && db && userId) {
+                    const docRef = getHistoryDocRef();
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists() && docSnap.data().history) {
+                        history = docSnap.data().history;
+                    } else {
+                        history = [];
+                    }
+                } else { // Fallback to localStorage
+                    const localHistory = localStorage.getItem('cpsHistory');
+                    history = localHistory ? JSON.parse(localHistory) : [];
+                }
+            } catch (error) {
+                console.error("Error loading history:", error);
                 history = [];
-                saveHistory();
-                updateAverageDisplays();
             }
-        });
+            updateAverageStats();
+        }
 
-        // 頁面加載時初始化
-        window.onload = () => {
-            resetGame();
-            loadHistory();
-        };
+        // 儲存歷史紀錄
+        async function saveHistory() {
+             if (!isAuthReady) return;
+             try {
+                if (firebaseConfig && db && userId) {
+                    const docRef = getHistoryDocRef();
+                    await setDoc(docRef, { history: history });
+                } else { // Fallback to localStorage
+                    localStorage.setItem('cpsHistory', JSON.stringify(history));
+                }
+             } catch(error){
+                console.error("Error saving history:", error);
+             }
+        }
+
+        // 清除歷史紀錄
+        async function clearHistory() {
+            history = [];
+            await saveHistory();
+            updateAverageStats();
+            alert("歷史紀錄已清除！");
+        }
+
+
+        // --- 事件監聽器 ---
+        durationSelect.addEventListener('change', initialize);
+        resetButton.addEventListener('click', initialize);
+        clearHistoryButton.addEventListener('click', clearHistory);
+        window.addEventListener('load', initialize);
+
     </script>
 </body>
 </html>
